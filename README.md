@@ -15,7 +15,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-MainFrame.Name = "FPSMainFrameV138"
+MainFrame.Name = "FPSMainFrameV139"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
 MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -224,10 +224,10 @@ UltraFastButton.MouseButton1Click:Connect(function()
         end
         
         Lighting.GlobalShadows = false
-        Lighting.ClockTime = 0
-        Lighting.Brightness = 0.5
-        Lighting.OutdoorAmbient = Color3.fromRGB(45, 45, 50)
-        Lighting.Ambient = Color3.fromRGB(45, 45, 50)
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 1.2
+        Lighting.OutdoorAmbient = Color3.fromRGB(160, 160, 165)
+        Lighting.Ambient = Color3.fromRGB(160, 160, 165)
         
         pcall(function()
             for _, effect in pairs(Lighting:GetChildren()) do
