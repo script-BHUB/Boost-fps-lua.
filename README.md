@@ -15,7 +15,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-MainFrame.Name = "FPSMainFrameV132"
+MainFrame.Name = "FPSMainFrameV133"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
 MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -102,18 +102,37 @@ local function checkIsBall(obj)
     return false
 end
 
--- ฟังก์ชันดัดแปลงจากสูตร Fix Lag All (ลบเอฟเฟค แช่แข็งการเคลื่อนไหว ลดความละเอียดวัตถุ)
-local function applyFixLagAll(v)
-    if not v or checkIsBall(v) then return end
+local function isEssentialObject(v)
+    if checkIsBall(v) then return true end
+    
+    if v:IsDescendantOf(localPlayer.Character) then return true end
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character and v:IsDescendantOf(player.Character) then
+            return true
+        end
+    end
+    
+    local name = v.Name:lower()
+    if name:find("court") or name:find("net") or name:find("floor") or name:find("line") or name:find("spawn") then
+        return true
+    end
+    
+    return false
+end
 
-    -- 1. [Fix Lag All Core] ปิดการทำงานและการขยับของ Particle ทันที
+local function processPart(v)
+    if not v or not v:IsDescendantOf(workspace) then return end
+    if isEssentialObject(v) then return end
+
+    if v:IsA("BasePart") and v.Transparency == 1 and v.Name == "Part" then
+        if not originalStates[v] then originalStates[v] = { Parent = v.Parent } end
+        v.Parent = nil
+        return
+    end
+
     if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
         if not originalStates[v] then 
-            originalStates[v] = { 
-                Enabled = v.Enabled,
-                Rate = v:IsA("ParticleEmitter") and v.Rate or nil,
-                Speed = v:IsA("ParticleEmitter") and v.Speed or nil
-            } 
+            originalStates[v] = { Enabled = v.Enabled, Rate = v:IsA("ParticleEmitter") and v.Rate or nil, Speed = v:IsA("ParticleEmitter") and v.Speed or nil } 
         end
         v.Enabled = false
         if v:IsA("ParticleEmitter") then
@@ -122,27 +141,19 @@ local function applyFixLagAll(v)
         end
     end
 
-    -- 2. ปิดเอฟเฟคสายเส้น (Trail / Beam) ที่วาดตามตัวละครหรือดาบ
-    if v:IsA("Trail") or v:IsA("Beam") then
+    if v:IsA("Trail") or v:IsA("Beam") or v:IsA("Highlight") or v:IsA("SelectionBox") then
         if not originalStates[v] then originalStates[v] = { Enabled = v.Enabled } end
         v.Enabled = false
     end
 
-    -- 3. จัดการโครงสร้างพาร์ทฉาก ปิดเงา ลบสะท้อนแสง
     if v:IsA("BasePart") or v:IsA("MeshPart") then
         if not originalStates[v] then 
-            originalStates[v] = { 
-                Material = v.Material, 
-                CastShadow = v.CastShadow, 
-                Reflectance = v.Reflectance,
-                TextureId = v:IsA("MeshPart") and v.TextureId or nil 
-            } 
+            originalStates[v] = { Material = v.Material, CastShadow = v.CastShadow, Reflectance = v.Reflectance, TextureId = v:IsA("MeshPart") and v.TextureId or nil } 
         end
         v.Material = Enum.Material.SmoothPlastic
         v.CastShadow = false
         v.Reflectance = 0
         
-        -- ถ้าไม่ใช่แมพ Blade Ball ให้ปลดลวดลาย Texture ออกให้เกลี้ยงเพื่อความลื่นขั้นสุด
         if not isBladeBall and v:IsA("MeshPart") and v.TextureId ~= "" then 
             v.TextureId = "" 
         end
@@ -160,19 +171,52 @@ local function applyFixLagAll(v)
     end
 end
 
+local function runDynamicStreaming()
+    local character = localPlayer.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if (v:IsA("BasePart") or v:IsA("MeshPart")) and not isEssentialObject(v) then
+            local distance = (v.Position - hrp.Position).Magnitude
+            
+            if distance > 75 then
+                if v.Parent ~= nil then
+                    if not originalStates[v] then originalStates[v] = { Parent = v.Parent } end
+                    v.Parent = nil
+                end
+            else
+                if originalStates[v] and originalStates[v].Parent and v.Parent == nil then
+                    v.Parent = originalStates[v].Parent
+                    pcall(processPart, v)
+                end
+            end
+        end
+    end
+end
+
 local loopConnection = nil
+local streamingConnection = nil
+
 local function startPurgeAndClayLoop()
     checkGameType()
     
     for _, v in pairs(workspace:GetDescendants()) do
-        pcall(applyFixLagAll, v)
+        pcall(processPart, v)
     end
     
     loopConnection = workspace.DescendantAdded:Connect(function(v)
         if isUltraFastEnabled then
             task.spawn(function()
-                pcall(applyFixLagAll, v)
+                pcall(processPart, v)
             end)
+        end
+    end)
+    
+    streamingConnection = task.spawn(function()
+        while isUltraFastEnabled do
+            pcall(runDynamicStreaming)
+            task.wait(0.3)
         end
     end)
 end
@@ -211,13 +255,6 @@ UltraFastButton.MouseButton1Click:Connect(function()
         
         if setfpscap then pcall(function() setfpscap(360) end) end
         
-        -- [EXTREME FIX LAG SETTINGS] บังคับสลับระบบเรนเดอร์ของ Roblox ให้กินทรัพยากรต่ำสุดๆ
-        pcall(function()
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.DistanceBased
-        end)
-        
-        -- เคลียร์ระบบแสง เงา และฟิลเตอร์หน้าจอทั้งหมด
         Lighting.GlobalShadows = false
         Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 140)
         Lighting.Ambient = Color3.fromRGB(140, 140, 140)
@@ -241,10 +278,7 @@ UltraFastButton.MouseButton1Click:Connect(function()
         
         if setfpscap then pcall(function() setfpscap(60) end) end
         if loopConnection then loopConnection:Disconnect(); loopConnection = nil end
-        
-        pcall(function()
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        end)
+        if streamingConnection then streamingConnection = nil end
         
         for obj, state in pairs(originalStates) do
             pcall(function()
