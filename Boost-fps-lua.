@@ -14,7 +14,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-MainFrame.Name = "SupremeFPS_V183"
+MainFrame.Name = "SupremeFPS_V185"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -74,11 +74,24 @@ local LP = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
-local SG = game:GetService("StarterGui")
 
 local original = {}
 local processedObjects = {}
 local workspaceConnection = nil
+
+local function isSpecialObject(v)
+    local name = v.Name:lower()
+    local parentName = (v.Parent and v.Parent.Name:lower()) or ""
+    if name:find("ball") or parentName:find("ball") or name:find("hitbox") or parentName:find("hitbox") or name:find("volley") or parentName:find("volley") then
+        return true
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character and (v:IsDescendantOf(p.Character) or v == p.Character) then
+            return true
+        end
+    end
+    return false
+end
 
 local function optimizeCharacter(char)
     if not char or char == LP.Character then return end
@@ -105,8 +118,7 @@ local function optimizeCharacter(char)
                 v.Texture = ""
                 v.Transparency = 1
             elseif v:IsA("BasePart") or v:IsA("MeshPart") then
-                local isBall = v.Name:lower():find("ball") or (v.Parent and v.Parent.Name:lower():find("ball"))
-                if not isBall then
+                if not isSpecialObject(v) then
                     if not original[v] then original[v] = {Mat = v.Material, Shadow = v.CastShadow, Ref = v.Reflectance} end
                     v.Material = Enum.Material.SmoothPlastic
                     v.CastShadow = false
@@ -118,8 +130,7 @@ local function optimizeCharacter(char)
                     end
                 end
             elseif v:IsA("SpecialMesh") then
-                local isBall = v.Name:lower():find("ball") or (v.Parent and v.Parent.Name:lower():find("ball"))
-                if not isBall then
+                if not isSpecialObject(v) then
                     if not original[v] then original[v] = {TextureId = v.TextureId, MeshType = v.MeshType, MeshId = v.MeshId} end
                     v.TextureId = ""
                     v.MeshId = ""
@@ -132,10 +143,7 @@ end
 
 local function optimize(v)
     if not v or processedObjects[v] then return end
-    
-    local isBall = v.Name:lower():find("ball") or (v.Parent and v.Parent.Name:lower():find("ball"))
-    if isBall then return end
-    
+    if isSpecialObject(v) then return end
     processedObjects[v] = true
     
     if v:IsA("BasePart") or v:IsA("MeshPart") then
@@ -170,34 +178,13 @@ local function optimize(v)
     end
 end
 
-local function toggleUIAnimations(state)
-    local guis = LP.PlayerGui:GetChildren()
-    for i = 1, #guis do
-        local gui = guis[i]
-        if gui ~= ScreenGui and gui:IsA("ScreenGui") then
-            local children = gui:GetDescendants()
-            for j = 1, #children do
-                local child = children[j]
-                if child:IsA("TweenScript") or child.Name:lower():find("anim") then
-                    pcall(function() child.Disabled = not state end)
-                end
-            end
-        end
-    end
-end
-
 local function instantBoost()
     pcall(function()
         workspace.Terrain.WaterWaveSize = 0
         workspace.Terrain.WaterWaveSpeed = 0
         workspace.Terrain.WaterReflectance = 0
         workspace.Terrain.WaterTransparency = 0
-        
-        local settings = settings()
-        settings.Rendering.QualityLevel = 1
-        
-        sethiddenproperty(workspace.ClientAnimatorThrottling, "Enabled", true)
-        sethiddenproperty(workspace, "InterpolationThrottling", "Default")
+        settings().Rendering.QualityLevel = 1
     end)
 
     local allObjects = workspace:GetDescendants()
@@ -250,24 +237,20 @@ local function instantBoost()
             v.Parent = nil
         end
     end
-    
-    toggleUIAnimations(false)
 
     workspaceConnection = workspace.DescendantAdded:Connect(function(v)
         if isEnabled then
-            local isBall = v.Name:lower():find("ball") or (v.Parent and v.Parent.Name:lower():find("ball"))
-            if isBall then return end
+            if isSpecialObject(v) then return end
             
             task.defer(function()
                 if v:IsA("BasePart") and not v.Anchored then
-                    local isPlayerPart = false
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Character and v:IsDescendantOf(p.Character) then
-                            isPlayerPart = true
-                            break
-                        end
+                    local distToPlayer = 9999
+                    local myChar = LP.Character
+                    if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                        distToPlayer = (v.Position - myChar.HumanoidRootPart.Position).Magnitude
                     end
-                    if not isPlayerPart then
+                    
+                    if distToPlayer > 40 then
                         v.Anchored = true
                         v.CanCollide = false
                     end
@@ -315,8 +298,6 @@ UltraFastButton.MouseButton1Click:Connect(function()
             Lighting.FogEnd = original[Lighting].FogEnd
             Lighting.FogStart = original[Lighting].FogStart
         end
-        
-        toggleUIAnimations(true)
         
         for part, data in pairs(original) do
             pcall(function()
@@ -409,8 +390,7 @@ task.spawn(function()
                     for i = 1, #allParts do
                         local p = allParts[i]
                         if p:IsA("BasePart") and not p.Anchored then
-                            local isBall = p.Name:lower():find("ball") or (p.Parent and p.Parent.Name:lower():find("ball"))
-                            if not isBall then
+                            if not isSpecialObject(p) then
                                 local dist = (p.Position - myPos).Magnitude
                                 if dist > 150 then
                                     if not original[p] then original[p] = {Mat = p.Material, Shadow = p.CastShadow, Ref = p.Reflectance, Anchored = p.Anchored, CanCollide = p.CanCollide} end
