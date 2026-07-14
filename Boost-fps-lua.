@@ -14,7 +14,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-MainFrame.Name = "SupremeFPS_V197"
+MainFrame.Name = "SupremeFPS_V201"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -87,20 +87,30 @@ local function isJointOrPhysics(v)
     return false
 end
 
-local function isBall(v)
-    local current = v
-    while current and current ~= workspace do
-        local name = string.lower(current.Name)
-        if string.find(name, "ball") or string.find(name, "vball") or string.find(name, "volleyball") then
+local function checkBall(v)
+    if not v then return false end
+    local name = string.lower(v.Name)
+    if string.find(name, "ball") or string.find(name, "vball") or string.find(name, "volleyball") or string.find(name, "ballg") then
+        return true
+    end
+    local parent = v.Parent
+    if parent and parent ~= workspace then
+        local pName = string.lower(parent.Name)
+        if string.find(pName, "ball") or string.find(pName, "vball") or string.find(pName, "volleyball") then
             return true
         end
-        current = current.Parent
     end
     return false
 end
 
-local function applyHardcoreClay(v, cleanMode)
-    if not v or isJointOrPhysics(v) or isBall(v) then return end
+local function applyClayExceptBall(v, cleanMode)
+    if not v or isJointOrPhysics(v) then return end
+    if checkBall(v) then return end
+    
+    local parent = v.Parent
+    if parent and parent:IsA("Model") and Players:GetPlayerFromCharacter(parent) then
+        return
+    end
     
     if cleanMode then
         pcall(function()
@@ -116,11 +126,11 @@ local function applyHardcoreClay(v, cleanMode)
                 v.Reflectance = 0
                 if v:IsA("MeshPart") then
                     if not originalData[v].TextureId then originalData[v].TextureId = v.TextureId end
-                    pcall(function() v.TextureId = "" end)
+                    v.TextureId = ""
                 end
             elseif v:IsA("SpecialMesh") then
                 if not originalData[v] then originalData[v] = {TextureId = v.TextureId} end
-                pcall(function() v.TextureId = "" end)
+                v.TextureId = ""
             elseif v:IsA("Decal") or v:IsA("Texture") then
                 if not originalData[v] then originalData[v] = {Texture = v.Texture, Trans = v.Transparency} end
                 v.Texture = ""
@@ -149,10 +159,10 @@ local function applyHardcoreClay(v, cleanMode)
                     v.CastShadow = originalData[v].Shadow
                     v.Reflectance = originalData[v].Ref
                     if v:IsA("MeshPart") and originalData[v].TextureId then
-                        pcall(function() v.TextureId = originalData[v].TextureId end)
+                        v.TextureId = originalData[v].TextureId
                     end
                 elseif v:IsA("SpecialMesh") then
-                    pcall(function() v.TextureId = originalData[v].TextureId end)
+                    v.TextureId = originalData[v].TextureId
                 elseif v:IsA("Decal") or v:IsA("Texture") then
                     v.Texture = originalData[v].Texture
                     v.Transparency = originalData[v].Trans
@@ -182,11 +192,11 @@ local function clayBoost(state)
         
         local descendants = workspace:GetDescendants()
         for i = 1, #descendants do
-            applyHardcoreClay(descendants[i], true)
+            applyClayExceptBall(descendants[i], true)
         end
         
         listenerConnection = workspace.DescendantAdded:Connect(function(child)
-            applyHardcoreClay(child, true)
+            applyClayExceptBall(child, true)
         end)
     else
         if listenerConnection then
@@ -200,7 +210,7 @@ local function clayBoost(state)
         
         local descendants = workspace:GetDescendants()
         for i = 1, #descendants do
-            applyHardcoreClay(descendants[i], false)
+            applyClayExceptBall(descendants[i], false)
         end
         
         originalData = {}
