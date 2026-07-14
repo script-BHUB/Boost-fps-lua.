@@ -14,7 +14,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-MainFrame.Name = "SupremeFPS_V187"
+MainFrame.Name = "SupremeFPS_V193"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
@@ -75,99 +75,118 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 
-local original = {}
-local processedObjects = {}
+local originalData = {}
+local listenerConnection = nil
+local zeroSequence = NumberSequence.new(0)
+local invisibleSequence = NumberSequence.new(1)
 
-local function isCriticalPart(v)
-    local name = v.Name:lower()
-    local parentName = (v.Parent and v.Parent.Name:lower()) or ""
-    
-    if name:find("ball") or parentName:find("ball") or name:find("hitbox") or parentName:find("hitbox") or name:find("volley") or parentName:find("volley") or name:find("net") then
+local function isJointOrPhysics(v)
+    if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") then
         return true
     end
-    
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Character and (v:IsDescendantOf(p.Character) or v == p.Character) then
-            return true
-        end
-    end
-    
-    if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") then
-        return true
-    end
-    
     return false
 end
 
-local function optimize(v)
-    if not v or processedObjects[v] then return end
-    if isCriticalPart(v) then return end
-    processedObjects[v] = true
+local function makeClay(v, cleanMode)
+    if not v or isJointOrPhysics(v) then return end
     
-    if v:IsA("BasePart") or v:IsA("MeshPart") then
-        if not original[v] then
-            original[v] = {Mat = v.Material, Shadow = v.CastShadow, Ref = v.Reflectance}
+    if cleanMode then
+        if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
+            v:Destroy()
+        elseif v:IsA("BasePart") or v:IsA("MeshPart") then
+            if not originalData[v] then
+                originalData[v] = {Mat = v.Material, Shadow = v.CastShadow, Ref = v.Reflectance}
+            end
+            v.Material = Enum.Material.SmoothPlastic
+            v.CastShadow = false
+            v.Reflectance = 0
+            if v:IsA("MeshPart") then
+                if not originalData[v].TextureId then originalData[v].TextureId = v.TextureId end
+                v.TextureId = "rbxassetid://0"
+            end
+        elseif v:IsA("SpecialMesh") then
+            if not originalData[v] then originalData[v] = {TextureId = v.TextureId} end
+            v.TextureId = "rbxassetid://0"
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            if not originalData[v] then originalData[v] = {Texture = v.Texture, Trans = v.Transparency} end
+            v.Texture = "rbxassetid://0"
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") then
+            if not originalData[v] then originalData[v] = {Enabled = v.Enabled, Size = v.Size, Trans = v.Transparency} end
+            v.Enabled = false
+            v.Size = zeroSequence
+            v.Transparency = invisibleSequence
+        elseif v:IsA("Trail") or v:IsA("Beam") then
+            if not originalData[v] then originalData[v] = {Enabled = v.Enabled, Trans = v.Transparency} end
+            v.Enabled = false
+            v.Transparency = invisibleSequence
+        elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
+            if not originalData[v] then originalData[v] = {Enabled = v.Enabled} end
+            v.Enabled = false
         end
-        v.Material = Enum.Material.SmoothPlastic
-        v.CastShadow = false
-        v.Reflectance = 0
-    elseif v:IsA("Decal") or v:IsA("Texture") then
-        if not original[v] then original[v] = {Texture = v.Texture, Trans = v.Transparency} end
-        v.Texture = ""
-        v.Transparency = 1
-    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") then
-        if not original[v] then original[v] = {Enabled = v.Enabled} end
-        v.Enabled = false
+    else
+        if originalData[v] then
+            pcall(function()
+                if v:IsA("BasePart") or v:IsA("MeshPart") then
+                    v.Material = originalData[v].Mat
+                    v.CastShadow = originalData[v].Shadow
+                    v.Reflectance = originalData[v].Ref
+                    if v:IsA("MeshPart") and originalData[v].TextureId then
+                        v.TextureId = originalData[v].TextureId
+                    end
+                elseif v:IsA("SpecialMesh") then
+                    v.TextureId = originalData[v].TextureId
+                elseif v:IsA("Decal") or v:IsA("Texture") then
+                    v.Texture = originalData[v].Texture
+                    v.Transparency = originalData[v].Trans
+                elseif v:IsA("ParticleEmitter") then
+                    v.Enabled = originalData[v].Enabled
+                    v.Size = originalData[v].Size
+                    v.Transparency = originalData[v].Trans
+                elseif v:IsA("Trail") or v:IsA("Beam") then
+                    v.Enabled = originalData[v].Enabled
+                    v.Transparency = originalData[v].Trans
+                else
+                    v.Enabled = originalData[v].Enabled
+                end
+            end)
+        end
     end
 end
 
-local function instantBoost()
-    pcall(function()
-        workspace.Terrain.WaterWaveSize = 0
-        workspace.Terrain.WaterWaveSpeed = 0
-        workspace.Terrain.WaterReflectance = 0
-        workspace.Terrain.WaterTransparency = 0
-        settings().Rendering.QualityLevel = 1
-    end)
-
-    local allObjects = workspace:GetDescendants()
-    local batchSize = 1000
-    
-    task.spawn(function()
-        for i = 1, #allObjects do
-            if not isEnabled then break end
-            optimize(allObjects[i])
-            if i % batchSize == 0 then
-                task.wait()
-            end
+local function instantBoost(state)
+    if state then
+        pcall(function()
+            Lighting.GlobalShadows = false
+            workspace.Terrain.WaterWaveSize = 0
+            workspace.Terrain.WaterWaveSpeed = 0
+            settings().Rendering.QualityLevel = 1
+        end)
+        
+        local descendants = workspace:GetDescendants()
+        for i = 1, #descendants do
+            makeClay(descendants[i], true)
         end
-    end)
-    
-    if not original[Lighting] then
-        original[Lighting] = {
-            GlobalShadows = Lighting.GlobalShadows,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            Ambient = Lighting.Ambient,
-            Brightness = Lighting.Brightness,
-            FogEnd = Lighting.FogEnd,
-            FogStart = Lighting.FogStart
-        }
-    end
-    
-    Lighting.GlobalShadows = false
-    Lighting.Brightness = 0
-    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-    Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-    Lighting.FogStart = 0
-    Lighting.FogEnd = 999999
-    
-    local lightChildren = Lighting:GetChildren()
-    for i = 1, #lightChildren do
-        local v = lightChildren[i]
-        if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Clouds") or v:IsA("Sky") then
-            if not original[v] then original[v] = {Parent = v.Parent} end
-            v.Parent = nil
+        
+        listenerConnection = workspace.DescendantAdded:Connect(function(child)
+            makeClay(child, true)
+        end)
+    else
+        if listenerConnection then
+            listenerConnection:Disconnect()
+            listenerConnection = nil
         end
+        
+        pcall(function()
+            Lighting.GlobalShadows = true
+        end)
+        
+        local descendants = workspace:GetDescendants()
+        for i = 1, #descendants do
+            makeClay(descendants[i], false)
+        end
+        
+        originalData = {}
     end
 end
 
@@ -180,7 +199,7 @@ UltraFastButton.MouseButton1Click:Connect(function()
         UltraFastButton.TextColor3 = TextColor_On
         UltraFastStroke.Color = Color3.fromRGB(0, 255, 180)
         StatLabel.Visible = true
-        instantBoost()
+        instantBoost(true)
         task.spawn(function()
             collectgarbage("collect")
         end)
@@ -190,36 +209,7 @@ UltraFastButton.MouseButton1Click:Connect(function()
         UltraFastButton.TextColor3 = TextColor_Off
         UltraFastStroke.Color = Color3.fromRGB(50, 50, 60)
         StatLabel.Visible = false
-        
-        if original[Lighting] then
-            Lighting.GlobalShadows = original[Lighting].GlobalShadows
-            Lighting.OutdoorAmbient = original[Lighting].OutdoorAmbient
-            Lighting.Ambient = original[Lighting].Ambient
-            Lighting.Brightness = original[Lighting].Brightness
-            Lighting.FogEnd = original[Lighting].FogEnd
-            Lighting.FogStart = original[Lighting].FogStart
-        end
-        
-        for part, data in pairs(original) do
-            pcall(function()
-                if part then
-                    if part:IsA("Decal") or part:IsA("Texture") then
-                        part.Texture = data.Texture
-                        part.Transparency = data.Trans
-                    elseif part:IsA("ParticleEmitter") or part:IsA("Trail") or part:IsA("Beam") or part:IsA("Fire") or part:IsA("Smoke") or part:IsA("Sparkles") or part:IsA("Light") then
-                        part.Enabled = data.Enabled
-                    elseif part:IsA("PostEffect") or part:IsA("Atmosphere") or part:IsA("Clouds") or part:IsA("Sky") then
-                        part.Parent = data.Parent
-                    elseif part ~= Lighting then
-                        part.Material = data.Mat
-                        part.CastShadow = data.Shadow
-                        part.Reflectance = data.Ref
-                    end
-                end
-            end)
-        end
-        original = {}
-        processedObjects = {}
+        instantBoost(false)
     end
 end)
 
