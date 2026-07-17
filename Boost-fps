@@ -14,7 +14,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-StatLabel.Name = "SupremeStats_V227"
+StatLabel.Name = "SupremeStats_V240"
 StatLabel.Parent = ScreenGui
 StatLabel.BackgroundTransparency = 0.5
 StatLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -31,7 +31,7 @@ local StatCorner = Instance.new("UICorner")
 StatCorner.CornerRadius = UDim.new(0, 6)
 StatCorner.Parent = StatLabel
 
-MainFrame.Name = "SupremeFPS_V227"
+MainFrame.Name = "SupremeFPS_V240"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0, 10, 0, 50)
@@ -82,8 +82,10 @@ local StatsService = game:GetService("Stats")
 
 local originalData = {}
 local listenerConnection = nil
+local characterConnections = {}
 local zeroSequence = NumberSequence.new(0)
 local invisibleSequence = NumberSequence.new(1)
+local clayGreyColor = Color3.fromRGB(120, 120, 125)
 
 local function isJointOrPhysics(v)
     if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") then
@@ -94,23 +96,89 @@ end
 
 local function checkBall(v)
     if not v then return false end
-    local current = v
-    while current and current ~= workspace do
-        local name = string.lower(current.Name)
-        if string.find(name, "ball") or string.find(name, "vball") or string.find(name, "volleyball") then
+    local name = string.lower(v.Name)
+    if name == "ball" or name == "vball" or name == "volleyball" or name == "ballg" or string.find(name, "ball") then
+        return true
+    end
+    if v.Parent and v.Parent:IsA("Model") then
+        local pName = string.lower(v.Parent.Name)
+        if pName == "ball" or pName == "vball" or pName == "volleyball" or string.find(pName, "ball") then
             return true
         end
-        current = current.Parent
     end
     return false
 end
 
-local function applyClayExceptBall(v, cleanMode)
+local function applyAccessorySmooth(v)
+    if not v or isJointOrPhysics(v) then return end
+    pcall(function()
+        if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
+            if not originalData[v] then originalData[v] = {Parent = v.Parent} end
+            v.Parent = nil
+        elseif v:IsA("BasePart") or v:IsA("MeshPart") then
+            if not originalData[v] then
+                originalData[v] = {Mat = v.Material, Shadow = v.CastShadow, Ref = v.Reflectance, Color = v.Color}
+            end
+            v.Material = Enum.Material.SmoothPlastic
+            v.CastShadow = false
+            v.Reflectance = 0
+            v.Color = clayGreyColor
+            if v:IsA("MeshPart") then
+                if not originalData[v].TextureId then originalData[v].TextureId = v.TextureId end
+                v.TextureId = ""
+            end
+        elseif v:IsA("SpecialMesh") then
+            if not originalData[v] then originalData[v] = {TextureId = v.TextureId} end
+            v.TextureId = ""
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            if not originalData[v] then originalData[v] = {Texture = v.Texture, Trans = v.Transparency} end
+            v.Texture = ""
+            v.Transparency = 1
+        end
+    end)
+end
+
+local function processCharacter(char)
+    if not char then return end
+    local bodyParts = {
+        ["head"] = true, ["torso"] = true, ["left arm"] = true, ["right arm"] = true, ["left leg"] = true, ["right leg"] = true,
+        ["uppertorso"] = true, ["lowertorso"] = true, ["leftupperarm"] = true, ["leftlowerarm"] = true, ["lefthand"] = true,
+        ["rightupperarm"] = true, ["rightlowerarm"] = true, ["righthand"] = true, ["leftupperleg"] = true, ["leftlowerleg"] = true,
+        ["leftfoot"] = true, ["rightupperleg"] = true, ["rightlowerleg"] = true, ["rightfoot"] = true, ["humanoidrootpart"] = true
+    }
+    local descendants = char:GetDescendants()
+    for i = 1, #descendants do
+        local obj = descendants[i]
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+            local partName = string.lower(obj.Name)
+            if not bodyParts[partName] then
+                applyAccessorySmooth(obj)
+            end
+        elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("SurfaceAppearance") or obj:IsA("SpecialMesh") then
+            local pPart = obj.Parent
+            if pPart and pPart:IsA("BasePart") then
+                local pName = string.lower(pPart.Name)
+                if not bodyParts[pName] then
+                    applyAccessorySmooth(obj)
+                end
+            else
+                applyAccessorySmooth(obj)
+            end
+        elseif obj:IsA("ShirtGraphic") or obj:IsA("Pants") or obj:IsA("Shirt") then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+end
+
+local function applyUltraSmooth(v, cleanMode)
     if not v or isJointOrPhysics(v) then return end
     if checkBall(v) then return end
     
     local parent = v.Parent
     if parent and parent:IsA("Model") and Players:GetPlayerFromCharacter(parent) then
+        if cleanMode then
+            processCharacter(parent)
+        end
         return
     end
     
@@ -163,6 +231,7 @@ local function applyClayExceptBall(v, cleanMode)
                     v.Material = originalData[v].Mat
                     v.CastShadow = originalData[v].Shadow
                     v.Reflectance = originalData[v].Ref
+                    if originalData[v].Color then v.Color = originalData[v].Color end
                     if v:IsA("MeshPart") and originalData[v].TextureId then
                         v.TextureId = originalData[v].TextureId
                     end
@@ -186,6 +255,36 @@ local function applyClayExceptBall(v, cleanMode)
     end
 end
 
+local function setupPlayerListeners()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then processCharacter(player.Character) end
+        characterConnections[player] = player.CharacterAdded:Connect(function(char)
+            if isEnabled then
+                task.wait(0.5)
+                processCharacter(char)
+            end
+        end)
+    end
+    
+    characterConnections["PlayerAdded"] = Players.PlayerAdded:Connect(function(player)
+        characterConnections[player] = player.CharacterAdded:Connect(function(char)
+            if isEnabled then
+                task.wait(0.5)
+                processCharacter(char)
+            end
+        end)
+    end)
+end
+
+local function clearPlayerListeners()
+    for k, conn in pairs(characterConnections) do
+        if typeof(conn) == "RBXScriptConnection" then
+            conn:Disconnect()
+        end
+    end
+    characterConnections = {}
+end
+
 local function clayBoost(state)
     if state then
         pcall(function()
@@ -194,21 +293,28 @@ local function clayBoost(state)
             workspace.Terrain.WaterWaveSpeed = 0
             settings().Rendering.QualityLevel = 1
             sethiddenproperty(Lighting, "Technology", Enum.Technology.Compatibility)
+            workspace.Terrain.Decoration = false
         end)
         
         local descendants = workspace:GetDescendants()
         for i = 1, #descendants do
-            applyClayExceptBall(descendants[i], true)
+            applyUltraSmooth(descendants[i], true)
         end
         
         local lightingDesc = Lighting:GetDescendants()
         for i = 1, #lightingDesc do
-            applyClayExceptBall(lightingDesc[i], true)
+            applyUltraSmooth(lightingDesc[i], true)
         end
         
+        setupPlayerListeners()
+        
         listenerConnection = workspace.DescendantAdded:Connect(function(child)
+            if checkBall(child) then return end
             task.defer(function()
-                applyClayExceptBall(child, true)
+                applyUltraSmooth(child, true)
+                if child and child:IsA("Explosion") then
+                    pcall(function() child:Destroy() end)
+                end
             end)
         end)
     else
@@ -217,18 +323,29 @@ local function clayBoost(state)
             listenerConnection = nil
         end
         
+        clearPlayerListeners()
+        
         pcall(function()
             Lighting.GlobalShadows = true
+            workspace.Terrain.Decoration = true
         end)
         
         local descendants = workspace:GetDescendants()
         for i = 1, #descendants do
-            applyClayExceptBall(descendants[i], false)
+            applyUltraSmooth(descendants[i], false)
         end
         
         local lightingDesc = Lighting:GetDescendants()
         for i = 1, #lightingDesc do
-            applyClayExceptBall(lightingDesc[i], false)
+            applyUltraSmooth(lightingDesc[i], false)
+        end
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character then
+                for _, obj in pairs(player.Character:GetDescendants()) do
+                    applyUltraSmooth(obj, false)
+                end
+            end
         end
         
         originalData = {}
@@ -245,10 +362,9 @@ UltraFastButton.MouseButton1Click:Connect(function()
         UltraFastStroke.Color = Color3.fromRGB(0, 255, 180)
         
         task.spawn(function()
-            collectgarbage("collect")
             pcall(function()
                 for _, v in pairs(workspace:GetDescendants()) do
-                    if v and (v:IsA("Explosion") or (v:IsA("BasePart") and v.Parent and string.lower(v.Parent.Name) == "effect")) then
+                    if v and v:IsA("Explosion") then
                         v:Destroy()
                     end
                 end
@@ -294,6 +410,14 @@ RunService.Stepped:Connect(function()
             end
         end
     end)
+end)
+
+task.spawn(function()
+    while task.wait(30) do
+        if isEnabled then
+            collectgarbage("step", 100)
+        end
+    end
 end)
 
 task.spawn(function()
