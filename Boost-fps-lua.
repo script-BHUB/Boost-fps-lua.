@@ -14,7 +14,7 @@ pcall(function()
     ScreenGui.ResetOnSpawn = false
 end)
 
-StatLabel.Name = "SupremeStats_V225"
+StatLabel.Name = "SupremeStats_V227"
 StatLabel.Parent = ScreenGui
 StatLabel.BackgroundTransparency = 0.5
 StatLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -31,7 +31,7 @@ local StatCorner = Instance.new("UICorner")
 StatCorner.CornerRadius = UDim.new(0, 6)
 StatCorner.Parent = StatLabel
 
-MainFrame.Name = "SupremeFPS_V225"
+MainFrame.Name = "SupremeFPS_V227"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0, 10, 0, 50)
@@ -84,7 +84,6 @@ local originalData = {}
 local listenerConnection = nil
 local zeroSequence = NumberSequence.new(0)
 local invisibleSequence = NumberSequence.new(1)
-local mutedSounds = {}
 
 local function isJointOrPhysics(v)
     if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") then
@@ -95,9 +94,13 @@ end
 
 local function checkBall(v)
     if not v then return false end
-    local name = string.lower(v.Name)
-    if name == "ball" or name == "vball" or name == "volleyball" or name == "ballg" then
-        return true
+    local current = v
+    while current and current ~= workspace do
+        local name = string.lower(current.Name)
+        if string.find(name, "ball") or string.find(name, "vball") or string.find(name, "volleyball") then
+            return true
+        end
+        current = current.Parent
     end
     return false
 end
@@ -183,31 +186,6 @@ local function applyClayExceptBall(v, cleanMode)
     end
 end
 
-local function applyNoDistractions(state)
-    local descendants = workspace:GetDescendants()
-    if state then
-        for i = 1, #descendants do
-            local v = descendants[i]
-            if v and v:IsA("Sound") then
-                local name = string.lower(v.Name)
-                if string.find(name, "music") or string.find(name, "lobby") or string.find(name, "cheer") or string.find(name, "ambient") or v.Volume > 0.8 then
-                    if mutedSounds[v] == nil then
-                        mutedSounds[v] = v.Volume
-                    end
-                    v.Volume = 0
-                end
-            end
-        end
-    else
-        for sound, vol in pairs(mutedSounds) do
-            if sound and sound.Parent then
-                sound.Volume = vol
-            end
-        end
-        table.clear(mutedSounds)
-    end
-end
-
 local function clayBoost(state)
     if state then
         pcall(function()
@@ -231,19 +209,8 @@ local function clayBoost(state)
         listenerConnection = workspace.DescendantAdded:Connect(function(child)
             task.defer(function()
                 applyClayExceptBall(child, true)
-                if child:IsA("Sound") then
-                    local name = string.lower(child.Name)
-                    if string.find(name, "music") or string.find(name, "lobby") or string.find(name, "cheer") or string.find(name, "ambient") or child.Volume > 0.8 then
-                        if mutedSounds[child] == nil then
-                            mutedSounds[child] = child.Volume
-                        end
-                        child.Volume = 0
-                    end
-                end
             end)
         end)
-        
-        applyNoDistractions(true)
     else
         if listenerConnection then
             listenerConnection:Disconnect()
@@ -264,7 +231,6 @@ local function clayBoost(state)
             applyClayExceptBall(lightingDesc[i], false)
         end
         
-        applyNoDistractions(false)
         originalData = {}
     end
 end
@@ -306,30 +272,28 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(function()
-            local char = LP.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    if hum.PlatformStand then hum.PlatformStand = false end
-                    if hum.Sit then hum.Sit = false end
+RunService.Stepped:Connect(function()
+    pcall(function()
+        local char = LP.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                if hum.PlatformStand then hum.PlatformStand = false end
+                if hum.Sit then hum.Sit = false end
+            end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local vel = hrp.AssemblyLinearVelocity
+                if vel.Magnitude > 75 then
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local vel = hrp.AssemblyLinearVelocity
-                    if vel.Magnitude > 75 then
-                        hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    end
-                    local rotVel = hrp.AssemblyAngularVelocity
-                    if rotVel.Magnitude > 75 then
-                        hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                    end
+                local rotVel = hrp.AssemblyAngularVelocity
+                if rotVel.Magnitude > 75 then
+                    hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
                 end
             end
-        end)
-    end
+        end
+    end)
 end)
 
 task.spawn(function()
