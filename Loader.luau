@@ -87,7 +87,7 @@ local function isExcluded(v)
 if not v or not v.Parent then return true end
 if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") or v:IsA("Camera") or v:IsA("Tool") or v:FindFirstAncestorOfClass("Tool") then return true end
 local ancestor=v:FindFirstAncestorOfClass("Model")
-return ancestor and ancestor==LP.Character
+return ancestor and (ancestor==LP.Character or Players:GetPlayerFromCharacter(ancestor)==LP)
 end
 
 local function hideCharacterAccessories(character,enable)
@@ -163,7 +163,7 @@ local function processBatch(items,cleanMode)
 task.spawn(function()
 for i=1,#items do
 applyUltraSmooth(items[i],cleanMode)
-if i%300==0 then RunService.Heartbeat:Wait() end
+if i%250==0 then RunService.Heartbeat:Wait() end
 end
 end)
 end
@@ -171,8 +171,6 @@ end
 local function clayBoost(state)
 if state then
 pcall(function()
-settings().Rendering.QualityLevel=Enum.QualityLevel.Level01
-pcall(function() sethiddenproperty(Lighting,"Technology",Enum.Technology.Compatibility) end)
 if Terrain then Terrain.Decoration,Terrain.WaterWaveSize,Terrain.WaterWaveSpeed=false,0,0 end
 Lighting.GlobalShadows,Lighting.ShadowMapDisplayDistance,Lighting.FogEnd=false,0,9e9
 if MaterialService then MaterialService.Use2022Materials=false end
@@ -189,11 +187,7 @@ end
 
 listenerConnection=workspace.DescendantAdded:Connect(function(child)
 if not isEnabled then return end
-if child:IsA("Explosion") then
-pcall(function() child:Destroy() end)
-else
 task.defer(applyUltraSmooth,child,true)
-end
 end)
 
 table.insert(playerConnections,Players.PlayerAdded:Connect(function(player)
