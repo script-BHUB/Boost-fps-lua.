@@ -14,35 +14,15 @@ ScreenGui.ResetOnSpawn = false
 local MainFrame = Instance.new("Frame")
 local FrameCorner = Instance.new("UICorner")
 local FrameStroke = Instance.new("UIStroke")
-local UIListLayout = Instance.new("UIListLayout")
-local StatLabel = Instance.new("TextLabel")
 local UltraFastButton = Instance.new("TextButton")
 local UltraFastCorner = Instance.new("UICorner")
 local UltraFastStroke = Instance.new("UIStroke")
 
-StatLabel.Name = "SupremeStats_V237"
-StatLabel.Parent = ScreenGui
-StatLabel.BackgroundTransparency = 0.5
-StatLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-StatLabel.Position = UDim2.new(0, 15, 0, 60)
-StatLabel.Size = UDim2.new(0, 180, 0, 30)
-StatLabel.Font = Enum.Font.Code
-StatLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-StatLabel.TextSize = 12
-StatLabel.Text = "FPS: -- | PING: --ms"
-StatLabel.Active = true
-StatLabel.Visible = true
-StatLabel.ZIndex = 999999999
-
-local StatCorner = Instance.new("UICorner")
-StatCorner.CornerRadius = UDim.new(0, 6)
-StatCorner.Parent = StatLabel
-
-MainFrame.Name = "SupremeFPS_V237"
+MainFrame.Name = "SupremeFPS_Extreme"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 MainFrame.Position = UDim2.new(0, 15, 0, 100)
-MainFrame.Size = UDim2.new(0, 180, 0, 75)
+MainFrame.Size = UDim2.new(0, 180, 0, 65)
 MainFrame.Active = true
 MainFrame.ZIndex = 999999998
 
@@ -53,27 +33,19 @@ FrameStroke.Color = Color3.fromRGB(40, 40, 55)
 FrameStroke.Thickness = 2
 FrameStroke.Parent = MainFrame
 
-UIListLayout.Parent = MainFrame
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 0)
-
-local UIPadding = Instance.new("UIPadding")
-UIPadding.Parent = MainFrame
-UIPadding.PaddingTop = UDim.new(0, 14)
-
 local Color_Off = Color3.fromRGB(25, 25, 30)
 local Color_On = Color3.fromRGB(0, 180, 120)
 local TextColor_Off = Color3.fromRGB(180, 180, 190)
 local TextColor_On = Color3.fromRGB(255, 255, 255)
 
 UltraFastButton.Parent = MainFrame
+UltraFastButton.Position = UDim2.new(0, 13, 0, 10)
 UltraFastButton.BackgroundColor3 = Color_Off
-UltraFastButton.Size = UDim2.new(0, 154, 0, 46)
+UltraFastButton.Size = UDim2.new(0, 154, 0, 45)
 UltraFastButton.Font = Enum.Font.GothamBold
-UltraFastButton.Text = "B hub - Boost FPS: Off"
+UltraFastButton.Text = "B hub - Extreme Boost: Off"
 UltraFastButton.TextColor3 = TextColor_Off
-UltraFastButton.TextSize = 11
+UltraFastButton.TextSize = 10
 UltraFastButton.ZIndex = 999999999
 
 UltraFastCorner.CornerRadius = UDim.new(0, 8)
@@ -84,257 +56,66 @@ UltraFastStroke.Thickness = 1.5
 UltraFastStroke.Parent = UltraFastButton
 
 local isEnabled = false
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local StatsService = game:GetService("Stats")
 local MaterialService = game:GetService("MaterialService")
 
-local originalData = {}
-local listenerConnection = nil
-local zeroSeq = NumberSequence.new(0)
-local invSeq = NumberSequence.new(1)
-
-local function isExcluded(v)
-	if not v or not v.Parent then return true end
-	if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") or v:IsA("Camera") then return true end
-	if v:IsA("Tool") or v:FindFirstAncestorOfClass("Tool") then return true end
-	local ancestor = v:FindFirstAncestorOfClass("Model")
-	if ancestor and Players:GetPlayerFromCharacter(ancestor) then return true end
-	return false
-end
-
-local function applyUltraSmooth(v, cleanMode)
-	if isExcluded(v) then return end
-	if cleanMode then
-		pcall(function()
-			if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
-				if not originalData[v] then originalData[v] = {Parent = v.Parent} end
-				v.Parent = nil
-			elseif v:IsA("BasePart") or v:IsA("MeshPart") then
-				if not originalData[v] then originalData[v] = {Mat = v.Material, Shadow = v.CastShadow, Ref = v.Reflectance} end
+local function optimizeWorkspace()
+	pcall(function()
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+		sethiddenproperty(Lighting, "Technology", Enum.Technology.Compatibility)
+		
+		workspace.Terrain.Decoration = false
+		workspace.Terrain.WaterWaveSize = 0
+		workspace.Terrain.WaterWaveSpeed = 0
+		
+		Lighting.GlobalShadows = false
+		Lighting.ShadowMapDisplayDistance = 0
+		Lighting.FogEnd = 9e9
+		
+		if MaterialService then MaterialService.Use2022Materials = false end
+		
+		for _, child in ipairs(Lighting:GetChildren()) do
+			if child:IsA("PostEffect") or child:IsA("BloomEffect") or child:IsA("BlurEffect") 
+			   or child:IsA("DepthOfFieldEffect") or child:IsA("SunRaysEffect") 
+			   or child:IsA("ColorCorrectionEffect") or child:IsA("Atmosphere") or child:IsA("Sky") then
+				if child:IsA("Sky") then child:Destroy() else child.Enabled = false end
+			end
+		end
+		
+		for _, v in ipairs(workspace:GetDescendants()) do
+			if v:IsA("BasePart") or v:IsA("MeshPart") then
 				v.Material = Enum.Material.SmoothPlastic
 				v.CastShadow = false
 				v.Reflectance = 0
-				if v:IsA("MeshPart") and v.TextureId ~= "" then
-					if not originalData[v].TextureId then originalData[v].TextureId = v.TextureId end
-					v.TextureId = ""
-				end
-			elseif v:IsA("SpecialMesh") and v.TextureId ~= "" then
-				if not originalData[v] then originalData[v] = {TextureId = v.TextureId} end
-				v.TextureId = ""
+				if v:IsA("MeshPart") then v.TextureId = "" end
 			elseif v:IsA("Decal") or v:IsA("Texture") then
-				if not originalData[v] then originalData[v] = {Texture = v.Texture, Trans = v.Transparency} end
-				v.Texture = ""
 				v.Transparency = 1
-			elseif v:IsA("ParticleEmitter") then
-				if not originalData[v] then originalData[v] = {Enabled = v.Enabled, Size = v.Size, Trans = v.Transparency} end
-				v.Enabled = false
-				v.Size = zeroSeq
-				v.Transparency = invSeq
-			elseif v:IsA("Trail") or v:IsA("Beam") then
-				if not originalData[v] then originalData[v] = {Enabled = v.Enabled, Trans = v.Transparency} end
-				v.Enabled = false
-				v.Transparency = invSeq
-			elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
-				if not originalData[v] then originalData[v] = {Enabled = v.Enabled} end
-				v.Enabled = false
-			elseif v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("Atmosphere") then
-				if not originalData[v] then originalData[v] = {Enabled = v.Enabled} end
+			elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
 				v.Enabled = false
 			end
-		end)
-	else
-		if originalData[v] then
-			pcall(function()
-				if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
-					v.Parent = originalData[v].Parent
-				elseif v:IsA("BasePart") or v:IsA("MeshPart") then
-					v.Material = originalData[v].Mat
-					v.CastShadow = originalData[v].Shadow
-					v.Reflectance = originalData[v].Ref
-					if v:IsA("MeshPart") and originalData[v].TextureId then
-						v.TextureId = originalData[v].TextureId
-					end
-				elseif v:IsA("SpecialMesh") then
-					v.TextureId = originalData[v].TextureId
-				elseif v:IsA("Decal") or v:IsA("Texture") then
-					v.Texture = originalData[v].Texture
-					v.Transparency = originalData[v].Trans
-				elseif v:IsA("ParticleEmitter") then
-					v.Enabled = originalData[v].Enabled
-					v.Size = originalData[v].Size
-					v.Transparency = originalData[v].Trans
-				elseif v:IsA("Trail") or v:IsA("Beam") then
-					v.Enabled = originalData[v].Enabled
-					v.Transparency = originalData[v].Trans
-				else
-					v.Enabled = originalData[v].Enabled
-				end
-			end)
 		end
-	end
-end
-
-local function clayBoost(state)
-	if state then
-		pcall(function()
-			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-			sethiddenproperty(Lighting, "Technology", Enum.Technology.Compatibility)
-			workspace.Terrain.Decoration = false
-			workspace.Terrain.WaterWaveSize = 0
-			workspace.Terrain.WaterWaveSpeed = 0
-			Lighting.GlobalShadows = false
-			Lighting.ShadowMapDisplayDistance = 0
-			Lighting.FogEnd = 9e9
-			if MaterialService then MaterialService.Use2022Materials = false end
-			for _, effect in ipairs(Lighting:GetChildren()) do
-				if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then
-					effect.Enabled = false
-				end
-			end
-		end)
-		task.spawn(function()
-			local desc = workspace:GetDescendants()
-			for i = 1, #desc do applyUltraSmooth(desc[i], true) end
-		end)
-		listenerConnection = workspace.DescendantAdded:Connect(function(child)
-			applyUltraSmooth(child, true)
-			if child and child:IsA("Explosion") then
-				pcall(function() child:Destroy() end)
-			end
-		end)
-	else
-		if listenerConnection then
-			listenerConnection:Disconnect()
-			listenerConnection = nil
-		end
-		pcall(function()
-			Lighting.GlobalShadows = true
-			workspace.Terrain.Decoration = true
-			for _, effect in ipairs(Lighting:GetChildren()) do
-				if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then
-					effect.Enabled = true
-				end
-			end
-		end)
-		task.spawn(function()
-			local desc = workspace:GetDescendants()
-			for i = 1, #desc do applyUltraSmooth(desc[i], false) end
-			originalData = {}
-		end)
-	end
+	end)
 end
 
 UltraFastButton.MouseButton1Click:Connect(function()
 	isEnabled = not isEnabled
 	if isEnabled then
-		UltraFastButton.Text = "B hub - Boost FPS: On"
+		UltraFastButton.Text = "B hub - Extreme Boost: On"
 		UltraFastButton.BackgroundColor3 = Color_On
 		UltraFastButton.TextColor3 = TextColor_On
 		UltraFastStroke.Color = Color3.fromRGB(0, 255, 180)
-		task.spawn(function()
-			collectgarbage("collect")
-			pcall(function()
-				for _, v in pairs(workspace:GetDescendants()) do
-					if v and v:IsA("Explosion") then v:Destroy() end
-				end
-			end)
-		end)
-		clayBoost(true)
+		
+		optimizeWorkspace()
+		collectgarbage("collect")
 	else
-		UltraFastButton.Text = "B hub - Boost FPS: Off"
+		UltraFastButton.Text = "B hub - Extreme Boost: Off"
 		UltraFastButton.BackgroundColor3 = Color_Off
 		UltraFastButton.TextColor3 = TextColor_Off
 		UltraFastStroke.Color = Color3.fromRGB(50, 50, 60)
-		clayBoost(false)
 	end
 end)
 
-UIS.InputBegan:Connect(function(input, gpe)
-	if not gpe and input.KeyCode == Enum.KeyCode.RightControl then
-		MainFrame.Visible = not MainFrame.Visible
-		StatLabel.Visible = not StatLabel.Visible
-	end
-end)
-
--- ========================================================
--- 🔥 ระบบ ANTI-FLING & ANTI-STUN (ทำงานอัตโนมัติตลอดเวลา)
--- ========================================================
-RunService.Stepped:Connect(function()
-	pcall(function()
-		local myChar = LP.Character
-		if not myChar then return end
-
-		-- 1. Anti-Stun
-		local hum = myChar:FindFirstChildOfClass("Humanoid")
-		if hum then
-			if hum.PlatformStand then hum.PlatformStand = false end
-			if hum.Sit then hum.Sit = false end
-			if hum.WalkSpeed < 16 then hum.WalkSpeed = 16 end -- คืนค่าความเร็วเมื่อถูกปลด
-		end
-
-		-- 2. Anti-Fling (Velocity Limit)
-		local hrp = myChar:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			if hrp.AssemblyLinearVelocity.Magnitude > 75 then
-				hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			end
-			if hrp.AssemblyAngularVelocity.Magnitude > 75 then
-				hrp.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-			end
-		end
-
-		-- 3. Anti-Fling (No-Collisionกับผู้เล่นอื่น)
-		for _, otherPlayer in ipairs(Players:GetPlayers()) do
-			if otherPlayer ~= LP and otherPlayer.Character then
-				for _, myPart in ipairs(myChar:GetChildren()) do
-					if myPart:IsA("BasePart") then
-						for _, otherPart in ipairs(otherPlayer.Character:GetChildren()) do
-							if otherPart:IsA("BasePart") then
-								local physicsService = game:GetService("PhysicsService")
-								pcall(function()
-									myPart.CanCollide = false
-								end)
-							end
-						end
-					end
-				end
-			end
-		end
-	end)
-end)
-
-task.spawn(function()
-	local lastTime = os.clock()
-	local frameCount = 0
-	local function getPrecisePing()
-		local networkStats = StatsService:FindFirstChild("Network")
-		if networkStats then
-			local serverStats = networkStats:FindFirstChild("ServerStatsItem")
-			if serverStats then return math.floor(serverStats:GetValue() or 0) end
-		end
-		return math.floor(LP:GetNetworkPing() * 1000)
-	end
-
-	RunService.Heartbeat:Connect(function()
-		if StatLabel.Visible then
-			frameCount = frameCount + 1
-			local currentTime = os.clock()
-			if currentTime - lastTime >= 0.5 then
-				local fps = math.floor(frameCount / (currentTime - lastTime))
-				frameCount = 0
-				lastTime = currentTime
-				local currentPing = getPrecisePing()
-				if currentPing <= 0 then currentPing = math.floor(LP:GetNetworkPing() * 1000) end
-				StatLabel.Text = "FPS: " .. fps .. " | PING: " .. currentPing .. "ms"
-			end
-		end
-	end)
-end)
-
+local UIS = game:GetService("UserInputService")
 pcall(function()
 	local dragStart, startPos
 	MainFrame.InputBegan:Connect(function(input)
@@ -347,27 +128,6 @@ pcall(function()
 		if dragStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - dragStart
 			MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-	end)
-	UIS.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragStart = nil
-		end
-	end)
-end)
-
-pcall(function()
-	local dragStart, startPos
-	StatLabel.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragStart = input.Position
-			startPos = StatLabel.Position
-		end
-	end)
-	UIS.InputChanged:Connect(function(input)
-		if dragStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local delta = input.Position - dragStart
-			StatLabel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end
 	end)
 	UIS.InputEnded:Connect(function(input)
