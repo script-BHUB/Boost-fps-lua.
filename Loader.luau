@@ -1,4 +1,4 @@
-local Players,Lighting,RunService,UIS,StatsService,MaterialService,TweenService=game:GetService("Players"),game:GetService("Lighting"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("Stats"),game:GetService("MaterialService"),game:GetService("TweenService")
+local Players,Lighting,RunService,UIS,Stats,MaterialService,TweenService=game:GetService("Players"),game:GetService("Lighting"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("Stats"),game:GetService("MaterialService"),game:GetService("TweenService")
 local Terrain=workspace:FindFirstChildOfClass("Terrain")
 local LP=Players.LocalPlayer
 local PlayerGui=LP:WaitForChild("PlayerGui")
@@ -92,15 +92,15 @@ end
 
 local function hideCharacterAccessories(character,enable)
 if not character or character==LP.Character then return end
-for _,item in pairs(character:GetDescendants()) do
-if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") or item:IsA("CharacterMesh") then
+for _,item in pairs(character:GetChildren()) do
+if item:IsA("Accessory") or item:IsA("Clothing") or item:IsA("CharacterMesh") then
 for _,part in pairs(item:GetDescendants()) do
 if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
 if enable then
 if not originalData[part] then originalData[part]={Trans=part.Transparency} end
 part.Transparency=1
 else
-part.Transparency=(originalData[part] and originalData[part].Trans~=nil) and originalData[part].Trans or 0
+part.Transparency=(originalData[part] and originalData[part].Trans) or 0
 end
 end
 end
@@ -110,7 +110,6 @@ end
 
 local function applyUltraSmooth(v,cleanMode)
 if isExcluded(v) then return end
-pcall(function()
 if cleanMode then
 if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
 if not originalData[v] then originalData[v]={Parent=v.Parent} end
@@ -158,6 +157,14 @@ v.Enabled=originalData[v].Enabled
 end
 end
 end
+end
+
+local function processBatch(items,cleanMode)
+task.spawn(function()
+for i=1,#items do
+applyUltraSmooth(items[i],cleanMode)
+if i%300==0 then RunService.Heartbeat:Wait() end
+end
 end)
 end
 
@@ -173,17 +180,22 @@ for _,effect in ipairs(Lighting:GetChildren()) do
 if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
 end
 end)
-task.spawn(function()
-local desc=workspace:GetDescendants()
-for i=1,#desc do applyUltraSmooth(desc[i],true) end
-end)
+
+processBatch(workspace:GetDescendants(),true)
+
 for _,p in pairs(Players:GetPlayers()) do
 if p~=LP and p.Character then hideCharacterAccessories(p.Character,true) end
 end
+
 listenerConnection=workspace.DescendantAdded:Connect(function(child)
-applyUltraSmooth(child,true)
-if child and child:IsA("Explosion") then pcall(function() child:Destroy() end) end
+if not isEnabled then return end
+if child:IsA("Explosion") then
+pcall(function() child:Destroy() end)
+else
+task.defer(applyUltraSmooth,child,true)
+end
 end)
+
 table.insert(playerConnections,Players.PlayerAdded:Connect(function(player)
 table.insert(playerConnections,player.CharacterAdded:Connect(function(char)
 if isEnabled and player~=LP then task.wait(0.5) hideCharacterAccessories(char,true) end
@@ -200,32 +212,22 @@ for _,effect in ipairs(Lighting:GetChildren()) do
 if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=true end
 end
 end)
+
 for _,p in pairs(Players:GetPlayers()) do
 if p~=LP and p.Character then hideCharacterAccessories(p.Character,false) end
 end
-task.spawn(function()
-local desc=workspace:GetDescendants()
-for i=1,#desc do applyUltraSmooth(desc[i],false) end
-originalData={}
-end)
+
+processBatch(workspace:GetDescendants(),false)
 end
 end
 
 UltraFastButton.MouseButton1Click:Connect(function()
 isEnabled=not isEnabled
-local tweenInfo=TweenInfo.new(0.3,Enum.EasingStyle.Quart,Enum.EasingDirection.Out)
+local tweenInfo=TweenInfo.new(0.25,Enum.EasingStyle.Quart,Enum.EasingDirection.Out)
 if isEnabled then
 UltraFastButton.Text="B hub - Boost FPS: On"
 TweenService:Create(UltraFastButton,tweenInfo,{BackgroundColor3=Color3.fromRGB(30,180,90),TextColor3=Color3.fromRGB(255,255,255)}):Play()
 TweenService:Create(UltraFastStroke,tweenInfo,{Color=Color3.fromRGB(50,255,120),Transparency=0.2}):Play()
-task.spawn(function()
-collectgarbage("collect")
-pcall(function()
-for _,v in pairs(workspace:GetDescendants()) do
-if v and v:IsA("Explosion") then v:Destroy() end
-end
-end)
-end)
 clayBoost(true)
 else
 UltraFastButton.Text="B hub - Boost FPS: Off"
@@ -243,14 +245,6 @@ end)
 
 task.spawn(function()
 local lastTime,frameCount=os.clock(),0
-local function getPrecisePing()
-local networkStats=StatsService:FindFirstChild("Network")
-if networkStats then
-local serverStats=networkStats:FindFirstChild("ServerStatsItem")
-if serverStats then return math.floor(serverStats:GetValue() or 0) end
-end
-return math.floor(LP:GetNetworkPing()*1000)
-end
 RunService.Heartbeat:Connect(function()
 if StatLabel.Visible then
 frameCount=frameCount+1
@@ -258,16 +252,14 @@ local currentTime=os.clock()
 if currentTime-lastTime>=0.5 then
 local fps=math.floor(frameCount/(currentTime-lastTime))
 frameCount,lastTime=0,currentTime
-local currentPing=getPrecisePing()
-if currentPing<=0 then currentPing=math.floor(LP:GetNetworkPing()*1000) end
-StatLabel.Text="FPS: "..fps.." | PING: "..currentPing.."ms"
+local ping=math.floor(LP:GetNetworkPing()*1000)
+StatLabel.Text="FPS: "..fps.." | PING: "..ping.."ms"
 end
 end
 end)
 end)
 
 local function makeDraggable(frame)
-pcall(function()
 local dragStart,startPos
 frame.InputBegan:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
@@ -282,7 +274,6 @@ end
 end)
 UIS.InputEnded:Connect(function(input)
 if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart=nil end
-end)
 end)
 end
 
