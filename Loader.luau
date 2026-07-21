@@ -1,5 +1,4 @@
 local Players,Lighting,RunService,UIS,TweenService=game:GetService("Players"),game:GetService("Lighting"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("TweenService")
-local Terrain=workspace:FindFirstChildOfClass("Terrain")
 local LP=Players.LocalPlayer
 local PlayerGui=LP:WaitForChild("PlayerGui")
 pcall(function() if game:GetService("CoreGui"):FindFirstChild("BHubSupremeUI") then game:GetService("CoreGui").BHubSupremeUI:Destroy() end end)
@@ -65,7 +64,7 @@ UltraFastStroke.Color=DarkBorder
 UltraFastStroke.Transparency=0.3
 UltraFastStroke.Thickness=1.2
 UltraFastStroke.Parent=UltraFastButton
-local isEnabled,originalData,listenerConnection=false,{},nil
+local isEnabled,originalData,connections=false,{},{}
 local zeroSeq,invSeq=NumberSequence.new(0),NumberSequence.new(1)
 local function isExcluded(v)
 if not v or not v.Parent then return true end
@@ -73,7 +72,13 @@ if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld
 local ancestor=v:FindFirstAncestorOfClass("Model")
 return ancestor and Players:GetPlayerFromCharacter(ancestor)~=nil
 end
-local function applyClayEffect(v,enable)
+local function hideAccessory(acc)
+if acc:IsA("Accessory") and not originalData[acc] then
+originalData[acc]={Parent=acc.Parent}
+acc.Parent=nil
+end
+end
+local function applyFullOptimization(v,enable)
 if isExcluded(v) then return end
 pcall(function()
 if enable then
@@ -105,8 +110,8 @@ v.Enabled=false
 end
 else
 if originalData[v] then
-if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
-v.Parent=originalData[v].Parent
+if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") or v:IsA("Accessory") then
+if v.Parent~=originalData[v].Parent then v.Parent=originalData[v].Parent end
 elseif v:IsA("BasePart") or v:IsA("MeshPart") then
 v.Material,v.CastShadow,v.Reflectance=originalData[v].Mat,originalData[v].Shadow,originalData[v].Ref
 if v:IsA("MeshPart") and originalData[v].TextureId then v.TextureId=originalData[v].TextureId end
@@ -125,34 +130,71 @@ end
 end
 end)
 end
-local function toggleClayBoost(state)
+local function toggleMasterBoost(state)
 if state then
 pcall(function()
+local Terrain=workspace:FindFirstChildOfClass("Terrain")
 if Terrain then Terrain.Decoration,Terrain.WaterWaveSize,Terrain.WaterWaveSpeed=false,0,0 end
 Lighting.GlobalShadows,Lighting.FogEnd=false,9e9
 for _,effect in ipairs(Lighting:GetChildren()) do
 if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
 end
 end)
+for _,p in pairs(Players:GetPlayers()) do
+if p~=LP and p.Character then
+for _,item in pairs(p.Character:GetChildren()) do hideAccessory(item) end
+end
+end
+table.insert(connections,Players.PlayerAdded:Connect(function(p)
+if p~=LP then
+p.CharacterAdded:Connect(function(char)
+if isEnabled then
+char.ChildAdded:Connect(function(child)
+if isEnabled then task.defer(hideAccessory,child) end
+end)
+end
+end)
+end
+end))
+for _,p in pairs(Players:GetPlayers()) do
+if p~=LP then
+table.insert(connections,p.CharacterAdded:Connect(function(char)
+if isEnabled then
+char.ChildAdded:Connect(function(child)
+if isEnabled then task.defer(hideAccessory,child) end
+end)
+end
+end))
+if p.Character then
+table.insert(connections,p.Character.ChildAdded:Connect(function(child)
+if isEnabled then task.defer(hideAccessory,child) end
+end))
+end
+end
+end
 task.spawn(function()
 local items=workspace:GetDescendants()
-for i=1,#items do applyClayEffect(items[i],true) end
+for i=1,#items do
+applyFullOptimization(items[i],true)
+if i%500==0 then RunService.Heartbeat:Wait() end
+end
 end)
-listenerConnection=workspace.DescendantAdded:Connect(function(child)
-if isEnabled then applyClayEffect(child,true) end
-end)
+table.insert(connections,workspace.DescendantAdded:Connect(function(child)
+if isEnabled then applyFullOptimization(child,true) end
+end))
 else
-if listenerConnection then listenerConnection:Disconnect() listenerConnection=nil end
+for _,c in ipairs(connections) do c:Disconnect() end
+connections={}
 pcall(function()
 Lighting.GlobalShadows=true
+local Terrain=workspace:FindFirstChildOfClass("Terrain")
 if Terrain then Terrain.Decoration=true end
 for _,effect in ipairs(Lighting:GetChildren()) do
 if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=true end
 end
 end)
 task.spawn(function()
-local items=workspace:GetDescendants()
-for i=1,#items do applyClayEffect(items[i],false) end
+for v,_ in pairs(originalData) do applyFullOptimization(v,false) end
 originalData={}
 end)
 end
@@ -164,12 +206,12 @@ if isEnabled then
 UltraFastButton.Text="B hub - Boost FPS: On"
 TweenService:Create(UltraFastButton,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=Color3.fromRGB(0,255,150)}):Play()
 TweenService:Create(UltraFastStroke,tweenInfo,{Color=Color3.fromRGB(0,255,150),Transparency=0.2}):Play()
-toggleClayBoost(true)
+toggleMasterBoost(true)
 else
 UltraFastButton.Text="B hub - Boost FPS: Off"
 TweenService:Create(UltraFastButton,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
 TweenService:Create(UltraFastStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
-toggleClayBoost(false)
+toggleMasterBoost(false)
 end
 end)
 UIS.InputBegan:Connect(function(input,gpe)
