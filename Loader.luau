@@ -52,7 +52,7 @@ BoostBtn.Position=UDim2.new(0,8,0,8)
 BoostBtn.Size=UDim2.new(1,-16,1,-16)
 BoostBtn.BackgroundColor3=DarkButton
 BoostBtn.Font=Enum.Font.FredokaOne
-BoostBtn.Text="B Hub - Instant Boost FPS: Off"
+BoostBtn.Text="B Hub Boost FPS : OFF"
 BoostBtn.TextColor3=Color3.fromRGB(180,180,190)
 BoostBtn.TextSize=11
 BoostBtn.AutoButtonColor=false
@@ -122,7 +122,7 @@ BoostBtn.MouseButton1Click:Connect(function()
 isEnabled=not isEnabled
 local tweenInfo=TweenInfo.new(0.15)
 if isEnabled then
-BoostBtn.Text="B Hub - Instant Boost FPS: On"
+BoostBtn.Text="B Hub Boost FPS : ON"
 TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
 TweenService:Create(BoostStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
 pcall(function()
@@ -144,7 +144,7 @@ end
 end
 collectgarbage("collect")
 else
-BoostBtn.Text="B Hub - Instant Boost FPS: Off"
+BoostBtn.Text="B Hub Boost FPS : OFF"
 TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
 TweenService:Create(BoostStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
 pcall(function() Lighting.GlobalShadows=true end)
