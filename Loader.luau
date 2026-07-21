@@ -66,127 +66,135 @@ BoostStroke.Thickness=1.2
 BoostStroke.Parent=BoostBtn
 local isEnabled=false
 local originalData={}
-local zeroSeq,invSeq=NumberSequence.new(0),NumberSequence.new(1)
+local originalLighting={}
+
 local function isExcluded(v)
-if not v or not v.Parent then return true end
-if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") or v:IsA("Camera") or v:IsA("Tool") or v:FindFirstAncestorOfClass("Tool") then return true end
-local ancestor=v:FindFirstAncestorOfClass("Model")
-return ancestor and Players:GetPlayerFromCharacter(ancestor)~=nil
+	if not v or not v.Parent then return true end
+	if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld") or v:IsA("Script") or v:IsA("LocalScript") or v:IsA("ModuleScript") or v:IsA("Animation") or v:IsA("Animator") or v:IsA("Humanoid") or v:IsA("Camera") or v:IsA("Tool") or v:FindFirstAncestorOfClass("Tool") then return true end
+	local ancestor=v:FindFirstAncestorOfClass("Model")
+	return ancestor and Players:GetPlayerFromCharacter(ancestor)~=nil
 end
+
 local function applyOptimization(v,enable)
-if isExcluded(v) then return end
-pcall(function()
-if enable then
-if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") then
-if not originalData[v] then originalData[v]={Parent=v.Parent} end
-v.Parent=nil
-elseif v:IsA("BasePart") or v:IsA("MeshPart") then
-if not originalData[v] then originalData[v]={Mat=v.Material,Shadow=v.CastShadow,Ref=v.Reflectance} end
-v.Material,v.CastShadow,v.Reflectance=Enum.Material.SmoothPlastic,false,0
-if v:IsA("MeshPart") and v.TextureId~="" then
-if not originalData[v].TextureId then originalData[v].TextureId=v.TextureId end
-v.TextureId=""
+	if isExcluded(v) then return end
+	pcall(function()
+		if enable then
+			if not originalData[v] then
+				if v:IsA("BasePart") or v:IsA("MeshPart") then
+					originalData[v]={Mat=v.Material,Shadow=v.CastShadow,Ref=v.Reflectance}
+				elseif v:IsA("Decal") or v:IsA("Texture") then
+					originalData[v]={Trans=v.Transparency}
+				elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
+					originalData[v]={Enabled=v.Enabled}
+				end
+			end
+			
+			if v:IsA("BasePart") or v:IsA("MeshPart") then
+				v.Material,v.CastShadow,v.Reflectance=Enum.Material.SmoothPlastic,false,0
+			elseif v:IsA("Decal") or v:IsA("Texture") then
+				v.Transparency=1
+			elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
+				v.Enabled=false
+			end
+		else
+			if originalData[v] then
+				if v:IsA("BasePart") or v:IsA("MeshPart") then
+					v.Material,v.CastShadow,v.Reflectance=originalData[v].Mat,originalData[v].Shadow,originalData[v].Ref
+				elseif v:IsA("Decal") or v:IsA("Texture") then
+					v.Transparency=originalData[v].Trans
+				elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
+					v.Enabled=originalData[v].Enabled
+				end
+			end
+		end
+	end)
 end
-elseif v:IsA("Decal") or v:IsA("Texture") then
-if not originalData[v] then originalData[v]={Texture=v.Texture,Trans=v.Transparency} end
-v.Texture,v.Transparency="",1
-elseif v:IsA("ParticleEmitter") then
-if not originalData[v] then originalData[v]={Enabled=v.Enabled,Size=v.Size,Trans=v.Transparency} end
-v.Enabled,v.Size,v.Transparency=false,zeroSeq,invSeq
-elseif v:IsA("Trail") or v:IsA("Beam") then
-if not originalData[v] then originalData[v]={Enabled=v.Enabled,Trans=v.Transparency} end
-v.Enabled,v.Transparency=false,invSeq
-elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") or v:IsA("Light") or v:IsA("Highlight") then
-if not originalData[v] then originalData[v]={Enabled=v.Enabled} end
-v.Enabled=false
-end
-else
-if originalData[v] then
-if v:IsA("BasePart") or v:IsA("MeshPart") then
-v.Material,v.CastShadow,v.Reflectance=originalData[v].Mat,originalData[v].Shadow,originalData[v].Ref
-if v:IsA("MeshPart") and originalData[v].TextureId then v.TextureId=originalData[v].TextureId end
-elseif v:IsA("Decal") or v:IsA("Texture") then
-v.Texture,v.Transparency=originalData[v].Texture,originalData[v].Trans
-elseif v:IsA("ParticleEmitter") then
-v.Enabled,v.Size,v.Transparency=originalData[v].Enabled,originalData[v].Size,originalData[v].Trans
-elseif v:IsA("Trail") or v:IsA("Beam") then
-v.Enabled,v.Transparency=originalData[v].Enabled,originalData[v].Trans
-else
-v.Enabled=originalData[v].Enabled
-end
-end
-end
-end)
-end
+
 BoostBtn.MouseButton1Click:Connect(function()
-isEnabled=not isEnabled
-local tweenInfo=TweenInfo.new(0.15)
-if isEnabled then
-BoostBtn.Text="B Hub Boost FPS : ON"
-TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
-TweenService:Create(BoostStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
-pcall(function()
-Lighting.GlobalShadows,Lighting.FogEnd=false,9e9
-for _,effect in ipairs(Lighting:GetChildren()) do
-if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
-end
+	isEnabled=not isEnabled
+	local tweenInfo=TweenInfo.new(0.15)
+	if isEnabled then
+		BoostBtn.Text="B Hub Boost FPS : ON"
+		TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+		TweenService:Create(BoostStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
+		
+		pcall(function()
+			originalLighting.GlobalShadows = Lighting.GlobalShadows
+			Lighting.GlobalShadows=false
+			for _,effect in ipairs(Lighting:GetChildren()) do
+				if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("Atmosphere") then
+					if not originalLighting[effect] then originalLighting[effect] = effect.Enabled end
+					effect.Enabled=false
+				end
+			end
+		end)
+		
+		local items=Workspace:GetDescendants()
+		for i=1,#items do
+			applyOptimization(items[i],true)
+		end
+	else
+		BoostBtn.Text="B Hub Boost FPS : OFF"
+		TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
+		TweenService:Create(BoostStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
+		
+		pcall(function()
+			if originalLighting.GlobalShadows ~= nil then
+				Lighting.GlobalShadows = originalLighting.GlobalShadows
+			end
+			for effect, state in pairs(originalLighting) do
+				if typeof(effect) == "Instance" and effect.Parent then
+					effect.Enabled = state
+				end
+			end
+			originalLighting = {}
+		end)
+		
+		for v,_ in pairs(originalData) do
+			if v and v.Parent then
+				applyOptimization(v,false)
+			end
+		end
+		originalData={}
+	end
 end)
-local items=Workspace:GetDescendants()
-for i=1,#items do
-local obj=items[i]
-applyOptimization(obj,true)
-if obj:IsA("Clouds") or obj:IsA("Atmosphere") or obj:IsA("PostEffect") then
-pcall(function() obj:Destroy() end)
-elseif obj:IsA("BasePart") then
-local name=obj.Name:lower()
-if name:find("leaf") or name:find("grass") or name:find("tree") or name:find("bush") then pcall(function() obj:Destroy() end) end
-end
-end
-collectgarbage("collect")
-else
-BoostBtn.Text="B Hub Boost FPS : OFF"
-TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
-TweenService:Create(BoostStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
-pcall(function() Lighting.GlobalShadows=true end)
-for v,_ in pairs(originalData) do applyOptimization(v,false) end
-originalData={}
-collectgarbage("collect")
-end
-end)
+
 UIS.InputBegan:Connect(function(input,gpe)
-if not gpe and input.KeyCode==Enum.KeyCode.RightControl then
-MainFrame.Visible,StatLabel.Visible=not MainFrame.Visible,not StatLabel.Visible
-end
+	if not gpe and input.KeyCode==Enum.KeyCode.RightControl then
+		MainFrame.Visible,StatLabel.Visible=not MainFrame.Visible,not StatLabel.Visible
+	end
 end)
+
 task.spawn(function()
-local lastTime,frameCount=os.clock(),0
-RunService.Heartbeat:Connect(function()
-if StatLabel.Visible then
-frameCount=frameCount+1
-local currentTime=os.clock()
-if currentTime-lastTime>=0.5 then
-local fps=math.floor(frameCount/(currentTime-lastTime))
-frameCount,lastTime=0,currentTime
-local ping=math.floor(LP:GetNetworkPing()*1000)
-StatLabel.Text="FPS: "..fps.." | PING: "..ping.."ms"
-end
-end
+	local lastTime,frameCount=os.clock(),0
+	RunService.Heartbeat:Connect(function()
+		if StatLabel.Visible then
+			frameCount=frameCount+1
+			local currentTime=os.clock()
+			if currentTime-lastTime>=0.5 then
+				local fps=math.floor(frameCount/(currentTime-lastTime))
+				frameCount,lastTime=0,currentTime
+				local ping=math.floor(LP:GetNetworkPing()*1000)
+				StatLabel.Text="FPS: "..fps.." | PING: "..ping.."ms"
+			end
+		end
+	end)
 end)
-end)
+
 local function makeDraggable(frame)
-local dragStart,startPos
-frame.InputBegan:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart,startPos=input.Position,frame.Position end
-end)
-UIS.InputChanged:Connect(function(input)
-if dragStart and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-local delta=input.Position-dragStart
-frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
-end
-end)
-UIS.InputEnded:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart=nil end
-end)
+	local dragStart,startPos
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart,startPos=input.Position,frame.Position end
+	end)
+	UIS.InputChanged:Connect(function(input)
+		if dragStart and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+			local delta=input.Position-dragStart
+			frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+		end
+	end)
+	UIS.InputEnded:Connect(function(input)
+		if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart=nil end
+	end)
 end
 makeDraggable(MainFrame)
 makeDraggable(StatLabel)
