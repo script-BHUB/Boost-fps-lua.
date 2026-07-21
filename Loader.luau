@@ -1,25 +1,25 @@
-local Players,Lighting,RunService,UIS,TweenService=game:GetService("Players"),game:GetService("Lighting"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("TweenService")
+local Players,Lighting,RunService,UIS,TweenService,Workspace=game:GetService("Players"),game:GetService("Lighting"),game:GetService("RunService"),game:GetService("UserInputService"),game:GetService("TweenService"),game:GetService("Workspace")
 local LP=Players.LocalPlayer
 local PlayerGui=LP:WaitForChild("PlayerGui")
-pcall(function() if game:GetService("CoreGui"):FindFirstChild("BHubSupremeUI") then game:GetService("CoreGui").BHubSupremeUI:Destroy() end end)
-if PlayerGui:FindFirstChild("BHubSupremeUI") then PlayerGui.BHubSupremeUI:Destroy() end
+pcall(function()if game:GetService("CoreGui"):FindFirstChild("BHubSupremeUI")then game:GetService("CoreGui").BHubSupremeUI:Destroy()end end)
+if PlayerGui:FindFirstChild("BHubSupremeUI")then PlayerGui.BHubSupremeUI:Destroy()end
 local ScreenGui=Instance.new("ScreenGui")
 ScreenGui.Name="BHubSupremeUI"
 ScreenGui.ResetOnSpawn=false
 ScreenGui.IgnoreGuiInset=true
 ScreenGui.DisplayOrder=999999999
-pcall(function() ScreenGui.Parent=game:GetService("CoreGui") end)
+pcall(function()ScreenGui.Parent=game:GetService("CoreGui")end)
 if not ScreenGui.Parent then ScreenGui.Parent=PlayerGui end
-local DarkBG,DarkButton,DarkBorder=Color3.fromRGB(15,15,18),Color3.fromRGB(22,22,28),Color3.fromRGB(45,45,55)
+local DarkBG,DarkButton,DarkBorder,ActiveColor=Color3.fromRGB(15,15,18),Color3.fromRGB(22,22,28),Color3.fromRGB(45,45,55),Color3.fromRGB(0,255,150)
 local StatLabel=Instance.new("TextLabel")
 StatLabel.Name="StatLabel"
 StatLabel.Parent=ScreenGui
 StatLabel.BackgroundTransparency=0.2
 StatLabel.BackgroundColor3=DarkBG
-StatLabel.Position=UDim2.new(0,15,0,80)
-StatLabel.Size=UDim2.new(0,180,0,30)
+StatLabel.Position=UDim2.new(0,15,0,50)
+StatLabel.Size=UDim2.new(0,200,0,30)
 StatLabel.Font=Enum.Font.Code
-StatLabel.TextColor3=Color3.fromRGB(0,255,150)
+StatLabel.TextColor3=ActiveColor
 StatLabel.TextSize=12
 StatLabel.Text="FPS: -- | PING: --ms"
 StatLabel.Active=true
@@ -35,8 +35,8 @@ local MainFrame=Instance.new("Frame")
 MainFrame.Name="MainFrame"
 MainFrame.Parent=ScreenGui
 MainFrame.BackgroundColor3=DarkBG
-MainFrame.Position=UDim2.new(0,15,0,120)
-MainFrame.Size=UDim2.new(0,180,0,56)
+MainFrame.Position=UDim2.new(0,15,0,90)
+MainFrame.Size=UDim2.new(0,200,0,260)
 MainFrame.Active=true
 local FrameCorner=Instance.new("UICorner")
 FrameCorner.CornerRadius=UDim.new(0,12)
@@ -46,25 +46,44 @@ FrameStroke.Color=DarkBorder
 FrameStroke.Transparency=0.1
 FrameStroke.Thickness=1.5
 FrameStroke.Parent=MainFrame
-local UltraFastButton=Instance.new("TextButton")
-UltraFastButton.Parent=MainFrame
-UltraFastButton.Position=UDim2.new(0,8,0,8)
-UltraFastButton.Size=UDim2.new(1,-16,1,-16)
-UltraFastButton.BackgroundColor3=DarkButton
-UltraFastButton.Font=Enum.Font.FredokaOne
-UltraFastButton.Text="B hub - Boost FPS: Off"
-UltraFastButton.TextColor3=Color3.fromRGB(180,180,190)
-UltraFastButton.TextSize=11
-UltraFastButton.AutoButtonColor=false
-local UltraFastCorner=Instance.new("UICorner")
-UltraFastCorner.CornerRadius=UDim.new(0,8)
-UltraFastCorner.Parent=UltraFastButton
-local UltraFastStroke=Instance.new("UIStroke")
-UltraFastStroke.Color=DarkBorder
-UltraFastStroke.Transparency=0.3
-UltraFastStroke.Thickness=1.2
-UltraFastStroke.Parent=UltraFastButton
-local isEnabled,originalData,connections=false,{},{}
+local UIList=Instance.new("UIListLayout")
+UIList.Parent=MainFrame
+UIList.SortOrder=Enum.SortOrder.LayoutOrder
+UIList.Padding=UDim.new(0,6)
+UIList.HorizontalAlignment=Enum.HorizontalAlignment.Center
+local UIPadding=Instance.new("UIPadding")
+UIPadding.Parent=MainFrame
+UIPadding.PaddingTop=UDim.new(0,10)
+UIPadding.PaddingBottom=UDim.new(0,10)
+local function createButton(name,defaultText,layoutOrder)
+local btn=Instance.new("TextButton")
+btn.Name=name
+btn.Parent=MainFrame
+btn.Size=UDim2.new(1,-20,0,38)
+btn.BackgroundColor3=DarkButton
+btn.Font=Enum.Font.FredokaOne
+btn.Text=defaultText
+btn.TextColor3=Color3.fromRGB(180,180,190)
+btn.TextSize=11
+btn.AutoButtonColor=false
+btn.LayoutOrder=layoutOrder
+local btnCorner=Instance.new("UICorner")
+btnCorner.CornerRadius=UDim.new(0,8)
+btnCorner.Parent=btn
+local btnStroke=Instance.new("UIStroke")
+btnStroke.Color=DarkBorder
+btnStroke.Transparency=0.3
+btnStroke.Thickness=1.2
+btnStroke.Parent=btn
+return btn,btnStroke
+end
+local MasterBtn,MasterStroke=createButton("MasterBtn","Master FPS Boost: Off",1)
+local RenderBtn,RenderStroke=createButton("RenderBtn","3D Render (AFK): On",2)
+local CullingBtn,CullingStroke=createButton("CullingBtn","Distance Culling: Off",3)
+local MapCleanBtn,MapCleanStroke=createButton("MapCleanBtn","Remove Map Assets",4)
+local RamCleanBtn,RamCleanStroke=createButton("RamCleanBtn","Clean RAM Memory",5)
+local isMasterOn,isRenderOn,isCullingOn=false,true,false
+local originalData,connections={},{}
 local zeroSeq,invSeq=NumberSequence.new(0),NumberSequence.new(1)
 local function isExcluded(v)
 if not v or not v.Parent then return true end
@@ -72,13 +91,7 @@ if v:IsA("Attachment") or v:IsA("Constraint") or v:IsA("Motor6D") or v:IsA("Weld
 local ancestor=v:FindFirstAncestorOfClass("Model")
 return ancestor and Players:GetPlayerFromCharacter(ancestor)~=nil
 end
-local function hideAccessory(acc)
-if acc:IsA("Accessory") and not originalData[acc] then
-originalData[acc]={Parent=acc.Parent}
-acc.Parent=nil
-end
-end
-local function applyFullOptimization(v,enable)
+local function applyOptimization(v,enable)
 if isExcluded(v) then return end
 pcall(function()
 if enable then
@@ -92,9 +105,6 @@ if v:IsA("MeshPart") and v.TextureId~="" then
 if not originalData[v].TextureId then originalData[v].TextureId=v.TextureId end
 v.TextureId=""
 end
-elseif v:IsA("SpecialMesh") and v.TextureId~="" then
-if not originalData[v] then originalData[v]={TextureId=v.TextureId} end
-v.TextureId=""
 elseif v:IsA("Decal") or v:IsA("Texture") then
 if not originalData[v] then originalData[v]={Texture=v.Texture,Trans=v.Transparency} end
 v.Texture,v.Transparency="",1
@@ -110,13 +120,9 @@ v.Enabled=false
 end
 else
 if originalData[v] then
-if v:IsA("SurfaceAppearance") or v:IsA("MaterialVariant") or v:IsA("Accessory") then
-if v.Parent~=originalData[v].Parent then v.Parent=originalData[v].Parent end
-elseif v:IsA("BasePart") or v:IsA("MeshPart") then
+if v:IsA("BasePart") or v:IsA("MeshPart") then
 v.Material,v.CastShadow,v.Reflectance=originalData[v].Mat,originalData[v].Shadow,originalData[v].Ref
 if v:IsA("MeshPart") and originalData[v].TextureId then v.TextureId=originalData[v].TextureId end
-elseif v:IsA("SpecialMesh") then
-v.TextureId=originalData[v].TextureId
 elseif v:IsA("Decal") or v:IsA("Texture") then
 v.Texture,v.Transparency=originalData[v].Texture,originalData[v].Trans
 elseif v:IsA("ParticleEmitter") then
@@ -130,89 +136,101 @@ end
 end
 end)
 end
-local function toggleMasterBoost(state)
-if state then
+MasterBtn.MouseButton1Click:Connect(function()
+isMasterOn=not isMasterOn
+local tweenInfo=TweenInfo.new(0.15)
+if isMasterOn then
+MasterBtn.Text="Master FPS Boost: On"
+TweenService:Create(MasterBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+TweenService:Create(MasterStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
 pcall(function()
-local Terrain=workspace:FindFirstChildOfClass("Terrain")
-if Terrain then Terrain.Decoration,Terrain.WaterWaveSize,Terrain.WaterWaveSpeed=false,0,0 end
 Lighting.GlobalShadows,Lighting.FogEnd=false,9e9
 for _,effect in ipairs(Lighting:GetChildren()) do
-if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
+if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
 end
 end)
-for _,p in pairs(Players:GetPlayers()) do
-if p~=LP and p.Character then
-for _,item in pairs(p.Character:GetChildren()) do hideAccessory(item) end
-end
-end
-table.insert(connections,Players.PlayerAdded:Connect(function(p)
-if p~=LP then
-p.CharacterAdded:Connect(function(char)
-if isEnabled then
-char.ChildAdded:Connect(function(child)
-if isEnabled then task.defer(hideAccessory,child) end
-end)
-end
-end)
-end
-end))
-for _,p in pairs(Players:GetPlayers()) do
-if p~=LP then
-table.insert(connections,p.CharacterAdded:Connect(function(char)
-if isEnabled then
-char.ChildAdded:Connect(function(child)
-if isEnabled then task.defer(hideAccessory,child) end
-end)
-end
-end))
-if p.Character then
-table.insert(connections,p.Character.ChildAdded:Connect(function(child)
-if isEnabled then task.defer(hideAccessory,child) end
-end))
-end
-end
-end
 task.spawn(function()
-local items=workspace:GetDescendants()
+local items=Workspace:GetDescendants()
 for i=1,#items do
-applyFullOptimization(items[i],true)
+applyOptimization(items[i],true)
 if i%500==0 then RunService.Heartbeat:Wait() end
 end
 end)
-table.insert(connections,workspace.DescendantAdded:Connect(function(child)
-if isEnabled then applyFullOptimization(child,true) end
-end))
 else
-for _,c in ipairs(connections) do c:Disconnect() end
-connections={}
-pcall(function()
-Lighting.GlobalShadows=true
-local Terrain=workspace:FindFirstChildOfClass("Terrain")
-if Terrain then Terrain.Decoration=true end
-for _,effect in ipairs(Lighting:GetChildren()) do
-if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("Atmosphere") then effect.Enabled=true end
-end
-end)
+MasterBtn.Text="Master FPS Boost: Off"
+TweenService:Create(MasterBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
+TweenService:Create(MasterStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
+pcall(function() Lighting.GlobalShadows=true end)
 task.spawn(function()
-for v,_ in pairs(originalData) do applyFullOptimization(v,false) end
+for v,_ in pairs(originalData) do applyOptimization(v,false) end
 originalData={}
 end)
 end
-end
-UltraFastButton.MouseButton1Click:Connect(function()
-isEnabled=not isEnabled
-local tweenInfo=TweenInfo.new(0.15,Enum.EasingStyle.Quart,Enum.EasingDirection.Out)
-if isEnabled then
-UltraFastButton.Text="B hub - Boost FPS: On"
-TweenService:Create(UltraFastButton,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=Color3.fromRGB(0,255,150)}):Play()
-TweenService:Create(UltraFastStroke,tweenInfo,{Color=Color3.fromRGB(0,255,150),Transparency=0.2}):Play()
-toggleMasterBoost(true)
+end)
+RenderBtn.MouseButton1Click:Connect(function()
+isRenderOn=not isRenderOn
+local tweenInfo=TweenInfo.new(0.15)
+RunService:Set3dRenderingEnabled(isRenderOn)
+if isRenderOn then
+RenderBtn.Text="3D Render (AFK): On"
+TweenService:Create(RenderBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
+TweenService:Create(RenderStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
 else
-UltraFastButton.Text="B hub - Boost FPS: Off"
-TweenService:Create(UltraFastButton,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
-TweenService:Create(UltraFastStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
-toggleMasterBoost(false)
+RenderBtn.Text="3D Render (AFK): Off"
+TweenService:Create(RenderBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+TweenService:Create(RenderStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
 end
+end)
+CullingBtn.MouseButton1Click:Connect(function()
+isCullingOn=not isCullingOn
+local tweenInfo=TweenInfo.new(0.15)
+if isCullingOn then
+CullingBtn.Text="Distance Culling: On"
+TweenService:Create(CullingBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+TweenService:Create(CullingStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
+local cullingConn=RunService.Heartbeat:Connect(function()
+local char=LP.Character
+if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+local hrpPos=char.HumanoidRootPart.Position
+for _,obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("BasePart") and not obj:IsDescendantOf(char) then
+local dist=(obj.Position-hrpPos).Magnitude
+if dist>150 then obj.LocalTransparencyModifier=1 else obj.LocalTransparencyModifier=0 end
+end
+end
+end)
+table.insert(connections,cullingConn)
+else
+CullingBtn.Text="Distance Culling: Off"
+TweenService:Create(CullingBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
+TweenService:Create(CullingStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
+for _,conn in ipairs(connections) do conn:Disconnect() end
+connections={}
+for _,obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("BasePart") then obj.LocalTransparencyModifier=0 end
+end
+end
+end)
+MapCleanBtn.MouseButton1Click:Connect(function()
+local tweenInfo=TweenInfo.new(0.15)
+TweenService:Create(MapCleanBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+for _,obj in ipairs(Workspace:GetDescendants()) do
+if obj:IsA("Clouds") or obj:IsA("Atmosphere") or obj:IsA("PostEffect") then
+obj:Destroy()
+elseif obj:IsA("BasePart") then
+local name=obj.Name:lower()
+if name:find("leaf") or name:find("grass") or name:find("tree") or name:find("bush") then obj:Destroy() end
+end
+end
+task.wait(0.3)
+TweenService:Create(MapCleanBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
+end)
+RamCleanBtn.MouseButton1Click:Connect(function()
+local tweenInfo=TweenInfo.new(0.15)
+TweenService:Create(RamCleanBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
+collectgarbage("collect")
+task.wait(0.3)
+TweenService:Create(RamCleanBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
 end)
 UIS.InputBegan:Connect(function(input,gpe)
 if not gpe and input.KeyCode==Enum.KeyCode.RightControl then
@@ -237,9 +255,7 @@ end)
 local function makeDraggable(frame)
 local dragStart,startPos
 frame.InputBegan:Connect(function(input)
-if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-dragStart,startPos=input.Position,frame.Position
-end
+if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragStart,startPos=input.Position,frame.Position end
 end)
 UIS.InputChanged:Connect(function(input)
 if dragStart and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
