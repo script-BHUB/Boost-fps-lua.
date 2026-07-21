@@ -52,7 +52,7 @@ BoostBtn.Position=UDim2.new(0,8,0,8)
 BoostBtn.Size=UDim2.new(1,-16,1,-16)
 BoostBtn.BackgroundColor3=DarkButton
 BoostBtn.Font=Enum.Font.FredokaOne
-BoostBtn.Text="B Hub - Ultra Boost FPS: Off"
+BoostBtn.Text="B Hub - Instant Boost FPS: Off"
 BoostBtn.TextColor3=Color3.fromRGB(180,180,190)
 BoostBtn.TextSize=11
 BoostBtn.AutoButtonColor=false
@@ -122,7 +122,7 @@ BoostBtn.MouseButton1Click:Connect(function()
 isEnabled=not isEnabled
 local tweenInfo=TweenInfo.new(0.15)
 if isEnabled then
-BoostBtn.Text="B Hub - Ultra Boost FPS: On"
+BoostBtn.Text="B Hub - Instant Boost FPS: On"
 TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=Color3.fromRGB(35,35,45),TextColor3=ActiveColor}):Play()
 TweenService:Create(BoostStroke,tweenInfo,{Color=ActiveColor,Transparency=0.2}):Play()
 pcall(function()
@@ -131,7 +131,6 @@ for _,effect in ipairs(Lighting:GetChildren()) do
 if effect:IsA("PostEffect") or effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or effect:IsA("Atmosphere") then effect.Enabled=false end
 end
 end)
-task.spawn(function()
 local items=Workspace:GetDescendants()
 for i=1,#items do
 local obj=items[i]
@@ -142,20 +141,16 @@ elseif obj:IsA("BasePart") then
 local name=obj.Name:lower()
 if name:find("leaf") or name:find("grass") or name:find("tree") or name:find("bush") then pcall(function() obj:Destroy() end) end
 end
-if i%500==0 then RunService.Heartbeat:Wait() end
 end
 collectgarbage("collect")
-end)
 else
-BoostBtn.Text="B Hub - Ultra Boost FPS: Off"
+BoostBtn.Text="B Hub - Instant Boost FPS: Off"
 TweenService:Create(BoostBtn,tweenInfo,{BackgroundColor3=DarkButton,TextColor3=Color3.fromRGB(180,180,190)}):Play()
 TweenService:Create(BoostStroke,tweenInfo,{Color=DarkBorder,Transparency=0.3}):Play()
 pcall(function() Lighting.GlobalShadows=true end)
-task.spawn(function()
 for v,_ in pairs(originalData) do applyOptimization(v,false) end
 originalData={}
 collectgarbage("collect")
-end)
 end
 end)
 UIS.InputBegan:Connect(function(input,gpe)
